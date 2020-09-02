@@ -1,8 +1,14 @@
+# USAGE
+# python train_ocr_model.py --az a_z_handwritten_data.csv --model handwriting.model
+
+# set the matplotlib backend so figures can be saved in the background
 import matplotlib
 matplotlib.use("Agg")
 
+# import the necessary packages
 from handrec.models import ResNet
-from handrec.dataset import load_az_dataset, load_mnist_dataset
+from handrec.dataset import load_mnist_dataset
+from handrec.dataset import load_az_dataset
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.optimizers import SGD
 from sklearn.preprocessing import LabelBinarizer
@@ -14,6 +20,7 @@ import numpy as np
 import argparse
 import cv2
 
+# construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-a", "--az", required=True,
 	help="path to A-Z dataset")
@@ -29,11 +36,14 @@ EPOCHS = 50
 INIT_LR = 1e-1
 BS = 128
 
+# load the A-Z and MNIST datasets, respectively
 print("[INFO] loading datasets...")
 (azData, azLabels) = load_az_dataset(args["az"])
 (digitsData, digitsLabels) = load_mnist_dataset()
 
-
+# the MNIST dataset occupies the labels 0-9, so let's add 10 to every
+# A-Z label to ensure the A-Z characters are not incorrectly labeled
+# as digits
 azLabels += 10
 
 # stack the A-Z data and labels with the MNIST digits data and labels
@@ -69,7 +79,6 @@ for i in range(0, len(classTotals)):
 (trainX, testX, trainY, testY) = train_test_split(data,
 	labels, test_size=0.20, stratify=labels, random_state=42)
 
-
 # construct the image generator for data augmentation
 aug = ImageDataGenerator(
 	rotation_range=10,
@@ -80,14 +89,13 @@ aug = ImageDataGenerator(
 	horizontal_flip=False,
 	fill_mode="nearest")
 
-
+# initialize and compile our deep neural network
 print("[INFO] compiling model...")
 opt = SGD(lr=INIT_LR, decay=INIT_LR / EPOCHS)
 model = ResNet.build(32, 32, 1, len(le.classes_), (3, 3, 3),
 	(64, 64, 128, 256), reg=0.0005)
 model.compile(loss="categorical_crossentropy", optimizer=opt,
 	metrics=["accuracy"])
-
 
 # train the network
 print("[INFO] training network...")
@@ -110,7 +118,6 @@ predictions = model.predict(testX, batch_size=BS)
 print(classification_report(testY.argmax(axis=1),
 	predictions.argmax(axis=1), target_names=labelNames))
 
-
 # save the model to disk
 print("[INFO] serializing network...")
 model.save(args["model"], save_format="h5")
@@ -126,7 +133,6 @@ plt.xlabel("Epoch #")
 plt.ylabel("Loss/Accuracy")
 plt.legend(loc="lower left")
 plt.savefig(args["plot"])
-
 
 # initialize our list of output images
 images = []
